@@ -5,7 +5,7 @@
 Via Composer
 
 ``` bash
-$ composer require hollisho/mini-php
+$ composer require hollisho/minio-php
 ```
 
 
