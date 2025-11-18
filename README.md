@@ -57,8 +57,11 @@ $client->batchDeleteObject($objects);
 
 ```php
 use hollisho\minio\StsClient;
+use hollisho\minio\ObjectClient;
 
-// 创建 STS 客户端
+// ========== 服务端：生成临时凭证 ==========
+
+// 创建 STS 客户端（使用主凭证）
 $stsClient = new StsClient(
     'https://oss.kongfupack.com',
     'your-access-key',
@@ -66,12 +69,46 @@ $stsClient = new StsClient(
     'arn:aws:iam::123456789012:role/your-role'
 );
 
-// 获取临时凭证
-$credentials = $stsClient->assumeRole(
+// 定义权限策略（只允许上传到 uploads/ 目录）
+$policy = json_encode([
+    'Version' => '2012-10-17',
+    'Statement' => [
+        [
+            'Effect' => 'Allow',
+            'Action' => ['s3:PutObject', 's3:GetObject'],
+            'Resource' => ['arn:aws:s3:::your-bucket/uploads/*']
+        ]
+    ]
+]);
+
+// 获取临时凭证（有效期 1 小时）
+$tempCredentials = $stsClient->assumeRole(
     3600,                           // 有效期（秒）
-    '{"Version":"2012-10-17",...}', // 策略
-    'session-name'                  // 会话名称
+    $policy,                        // 权限策略
+    'client-session-' . uniqid()    // 会话名称
 );
+
+// 返回给客户端的临时凭证
+$credentialsForClient = [
+    'accessKeyId' => $tempCredentials->getAccessKeyId(),
+    'secretAccessKey' => $tempCredentials->getSecretKey(),
+    'sessionToken' => $tempCredentials->getSecurityToken(),
+    'expiresIn' => 3600
+];
+
+// ========== 客户端：使用临时凭证 ==========
+
+// 客户端使用临时凭证创建 ObjectClient
+$client = new ObjectClient(
+    'https://oss.kongfupack.com',
+    $credentialsForClient['accessKeyId'],
+    $credentialsForClient['secretAccessKey'],
+    'your-bucket',
+    $credentialsForClient['sessionToken']  // 临时凭证的 token
+);
+
+// 客户端可以在权限范围内进行操作
+$client->upLoadObject('/path/to/file.jpg', 'uploads/file.jpg');
 ```
 
 ## Testing
@@ -87,6 +124,27 @@ composer install
 # 运行单元测试
 vendor/bin/phpunit --exclude-group integration
 
-# 配置环境变量后运行集成测试
+# 运行集成测试（需要配置 MinIO 连接信息）
 vendor/bin/phpunit tests/IntegrationTest.php
+
+# 运行 STS 测试（需要 MinIO 配置 STS，否则会跳过）
+vendor/bin/phpunit tests/StsClientIntegrationTest.php
 ```
+
+### 关于 STS 测试
+
+STS (Security Token Service) 是可选功能，大多数应用不需要。如果你看到 STS 测试被跳过，这是**正常的**。
+
+**为什么 STS 测试失败？**
+- MinIO 的 STS 功能需要配置 OIDC（OpenID Connect）才能启用
+- 配置 OIDC 需要额外的身份提供者服务器（Keycloak、Auth0 等）
+- 配置复杂，大多数项目不需要
+
+**推荐的替代方案（立即可用）：**
+1. **后端代理上传**（最推荐）- 见 `examples/backend-proxy-upload.php`
+2. **预签名 URL**（最简单）- 见 `examples/presigned-url-upload.php`
+
+**相关文档：**
+- [最终建议](docs/FINAL_RECOMMENDATION.md) - 你应该使用哪种方案
+- [STS 故障排查](docs/STS_TROUBLESHOOTING.md) - 为什么 STS 不工作
+- [启用 STS](docs/ENABLE_STS.md) - 如果确实需要配置 STS

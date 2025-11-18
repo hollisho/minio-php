@@ -17,18 +17,21 @@ class StsClient
 
     private $roleRan;
 
-    public function __construct($endpoint, $key, $secret, $roleRan = '')
+    private $region;
+
+    public function __construct($endpoint, $key, $secret, $roleRan = '', $region = 'us-east-1')
     {
-        $this->endpoint =$endpoint;
+        $this->endpoint = $endpoint;
         $this->key = $key;
         $this->secret = $secret;
         $this->roleRan = $roleRan;
+        $this->region = $region;
         $this->client = new \Aws\Sts\StsClient([
             'credentials' => [
                 'key'    => $this->key,
                 'secret' => $this->secret
             ],
-            'region' => 'cn-north-1',
+            'region' => $this->region,
             'version' => 'latest',
             'bucket_endpoint' => false,
             'use_path_style_endpoint' => true,
@@ -41,16 +44,17 @@ class StsClient
      * @param $key
      * @param $secret
      * @param $roleRan
+     * @param string $region
      * @return StsClient
      */
-    public static function getInstance($endpoint, $key, $secret, $roleRan)
+    public static function getInstance($endpoint, $key, $secret, $roleRan, $region = 'us-east-1')
     {
         static $_instance = [];
         $guid = __CLASS__ . '_' . StringHelper::toGuidString(json_encode([
-                $endpoint, $key, $secret, $roleRan
+                $endpoint, $key, $secret, $roleRan, $region
             ]));
         if (!isset($_instance[$guid])) {
-            $obj = new StsClient($endpoint, $key, $secret, $roleRan);
+            $obj = new StsClient($endpoint, $key, $secret, $roleRan, $region);
             $_instance[$guid] = $obj;
         }
 
