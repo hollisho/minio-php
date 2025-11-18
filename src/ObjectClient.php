@@ -20,12 +20,15 @@ class ObjectClient
 
     private $bucket;
 
-    public function __construct($endpoint, $key, $secret, $bucket, $token = '')
+    private $region;
+
+    public function __construct($endpoint, $key, $secret, $bucket, $token = '', $region = 'us-east-1')
     {
         $this->endpoint = $endpoint;
         $this->key = $key;
         $this->secret = $secret;
         $this->bucket = $bucket;
+        $this->region = $region;
 
         $credentials = [
             'key'    => $this->key,
@@ -38,7 +41,7 @@ class ObjectClient
 
         $this->client = new S3Client([
             'version' => 'latest',
-            'region'  => 'cn-north-1', //China (Beijing)
+            'region'  => $this->region,
             'endpoint' => $this->endpoint,
             'use_path_style_endpoint' => true,
             'credentials' => $credentials,
@@ -52,16 +55,17 @@ class ObjectClient
      * @param $secret
      * @param $bucket
      * @param string $token
+     * @param string $region
      * @return ObjectClient
      */
-    public static function getInstance($endpoint, $key, $secret, $bucket, $token = '')
+    public static function getInstance($endpoint, $key, $secret, $bucket, $token = '', $region = 'us-east-1')
     {
         static $_instance = [];
         $guid = __CLASS__ . StringHelper::toGuidString(json_encode([
-                $endpoint, $key, $secret, $bucket
+                $endpoint, $key, $secret, $bucket, $region
             ]));
         if (!isset($_instance[$guid])) {
-            $obj = new ObjectClient($endpoint, $key, $secret, $bucket, $token);
+            $obj = new ObjectClient($endpoint, $key, $secret, $bucket, $token, $region);
             $_instance[$guid] = $obj;
         }
 
