@@ -151,6 +151,7 @@ class ObjectClient
     /**
      * 上传文件
      * @param $objectContent
+     * @param $objectPath
      * @param $objectName
      * @return array|false
      */
