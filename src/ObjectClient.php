@@ -307,28 +307,88 @@ class ObjectClient
     }
 
     /**
-     * 获取对象连接
+     * 获取对象直接访问 URL（不需要签名）
      * @param $object : 对象路径 例：若在文件夹内 aaa/bbb/ccc.png 桶根目录下 ddd.png
-     * @param $expires : 有效期
      * @return string
      */
-    public function getUrl($object, $expires = null){
-        $cmd = $this->client->getCommand('GetObject', [
+    public function getUrl($object){
+        // 返回直接访问的 URL（需要存储桶设置为公开访问）
+        return $this->endpoint . '/' . $this->bucket . '/' . $object;
+    }
+
+    /**
+     * 获取对象预签名 URL（带过期时间和正确的 Content-Type）
+     * @param $object : 对象路径
+     * @param $expires : 有效期，默认 +1 days
+     * @param $mimeType : MIME 类型，如 image/jpeg
+     * @param $disposition : Content-Disposition，inline 为在线预览，attachment 为下载
+     * @return string
+     */
+    public function generatePresignedUrl($object, $expires = null, $mimeType = null, $disposition = 'inline'){
+        $params = [
             'Bucket' => $this->bucket,
             'Key' => $object
-        ]);
+        ];
+
+        // 设置响应头
+        if ($mimeType) {
+            $params['ResponseContentType'] = $mimeType;
+        }
+
+        if ($disposition) {
+            $params['ResponseContentDisposition'] = $disposition;
+        }
+
+        $cmd = $this->client->getCommand('GetObject', $params);
 
         if(!$expires){
             $expires = '+1 days';
         }
 
-        $request=$this->client->createPresignedRequest($cmd,$expires);
+        $request = $this->client->createPresignedRequest($cmd, $expires);
         $presignedUrl = (string)$request->getUri();
 
         return $presignedUrl;
+    }
 
-        //测试-图片
-        //return "<img src='{$presignedUrl}'/>";
+    /**
+     * 根据文件扩展名获取 MIME 类型
+     * @param $filename : 文件名或路径
+     * @return string
+     */
+    public function getMimeTypeByFilename($filename){
+        $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+
+        $mimeTypes = [
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            'svg' => 'image/svg+xml',
+            'pdf' => 'application/pdf',
+            'mp4' => 'video/mp4',
+            'webm' => 'video/webm',
+            'mp3' => 'audio/mpeg',
+            'wav' => 'audio/wav',
+            'txt' => 'text/plain',
+            'html' => 'text/html',
+            'css' => 'text/css',
+            'js' => 'application/javascript',
+            'json' => 'application/json',
+            'xml' => 'application/xml',
+            'zip' => 'application/zip',
+        ];
+
+        return isset($mimeTypes[$extension]) ? $mimeTypes[$extension] : 'application/octet-stream';
+    }
+
+    /**
+     * 获取 S3Client 实例（用于高级操作）
+     * @return S3Client
+     */
+    public function getClient(){
+        return $this->client;
     }
 
     /**
