@@ -15,9 +15,9 @@ use PHPUnit\Framework\TestCase;
 class IntegrationTest extends TestCase
 {
     private $endpoint = 'https://oss.kongfupack.com';
-    private $accessKey = 'hoZyEhnhbV8ek9cHveAi';
-    private $secretKey = 'o0TPBizQzcoj56BvWRPtJSz7cyT1YP3Z4VkM9xuN';
-    private $bucket = 'wpcollege';
+    private $accessKey = 'test';
+    private $secretKey = 'test';
+    private $bucket = 'test';
     private $region = 'us-east-1';
     private $client;
 

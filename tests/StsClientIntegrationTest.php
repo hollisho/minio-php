@@ -29,9 +29,9 @@ class StsClientIntegrationTest extends TestCase
 {
     // 主账号凭证（服务端使用）
     private $endpoint = 'https://oss.kongfupack.com';
-    private $masterAccessKey = 'hoZyEhnhbV8ek9cHveAi';
-    private $masterSecretKey = 'o0TPBizQzcoj56BvWRPtJSz7cyT1YP3Z4VkM9xuN';
-    private $bucket = 'wpcollege';
+    private $masterAccessKey = 'test';
+    private $masterSecretKey = 'test';
+    private $bucket = 'test';
     private $region = 'us-east-1';
     
     // STS 配置
