@@ -150,24 +150,36 @@ class ObjectClient
 
     /**
      * 上传文件
-     * @param $objectContent
-     * @param $objectPath
-     * @param $objectName
+     * @param $objectContent 文件内容
+     * @param $objectPath 对象路径
+     * @param $objectName 对象名称
+     * @param $contentType MIME 类型（可选）
+     * @param $contentDisposition Content-Disposition（可选，默认 inline）
      * @return array|false
      */
-    public function upLoadObjectContent($objectContent, $objectPath, $objectName = null)
+    public function upLoadObjectContent($objectContent, $objectPath, $objectName = null, $contentType = null, $contentDisposition = 'inline')
     {
         if(!$objectName){
             $objectName = basename($objectPath);
         }
 
-        $result = $this->client->putObject([
+        // 如果没有指定 Content-Type，根据文件名猜测
+        if (!$contentType) {
+            $contentType = $this->getMimeTypeByFilename($objectName);
+        }
+
+        $params = [
             'Bucket' => $this->bucket,
             'Key' => $objectPath,
-            'Body' => $objectContent, //要上传的文件
-//            'ACL' => 'public-read',//是否开放不签名直接访问
-//            "ContentType" => mime_content_type($objectContent)
-        ]);
+            'Body' => $objectContent,
+            'ContentType' => $contentType,
+            'ContentDisposition' => $contentDisposition,
+        ];
+
+        // 如果需要公开访问，设置 ACL
+        // $params['ACL'] = 'public-read';
+
+        $result = $this->client->putObject($params);
 
         if(isset($result["@metadata"]["statusCode"]) && $result["@metadata"]["statusCode"] == 200){
             return [
@@ -318,20 +330,25 @@ class ObjectClient
     }
 
     /**
-     * 获取对象预签名 URL（带过期时间和正确的 Content-Type）
+     * 获取对象预签名 URL（带过期时间）
+     *
+     * 注意：如果上传时已设置 Content-Type 和 Content-Disposition，
+     * 则无需在此处指定，MinIO 会使用对象的元数据。
+     * 只有在需要临时覆盖响应头时才需要传递这些参数。
+     *
      * @param $object : 对象路径
      * @param $expires : 有效期，默认 +1 days
-     * @param $mimeType : MIME 类型，如 image/jpeg
-     * @param $disposition : Content-Disposition，inline 为在线预览，attachment 为下载
+     * @param $mimeType : MIME 类型（可选，用于覆盖对象元数据）
+     * @param $disposition : Content-Disposition（可选，用于覆盖对象元数据）
      * @return string
      */
-    public function generatePresignedUrl($object, $expires = null, $mimeType = null, $disposition = 'inline'){
+    public function generatePresignedUrl($object, $expires = null, $mimeType = null, $disposition = null){
         $params = [
             'Bucket' => $this->bucket,
             'Key' => $object
         ];
 
-        // 设置响应头
+        // 只有在需要覆盖对象元数据时才设置响应头
         if ($mimeType) {
             $params['ResponseContentType'] = $mimeType;
         }
